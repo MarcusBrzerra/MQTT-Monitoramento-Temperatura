@@ -184,3 +184,111 @@ Reiniciar o Mosquitto:
 sudo systemctl restart mosquitto
 ```
 >A conexão anônima deve ser utilizada somente em ambiente de testes. Em uma implantação real, devem ser configurados autenticação, controle de acesso e criptografia.
+
+## Teste do MQTT
+
+No Raspberry Pi Broker, iniciar o Subscriber:
+
+```bash
+mosquitto_sub -h IP_DO_BROKER -p 1883 -t "teste/temperatura" -v
+```
+
+No Raspberry Pi Publisher, enviar uma mensagem:
+
+```bash
+mosquitto_pub -h IP_DO_BROKER -p 1883 -t "teste/temperatura" -m "25.8"
+```
+Resultado esperado:
+```text
+teste/temperatura 25.8
+```
+
+## Montagem do sensor DS18B20
+
+//
+
+(imagem)
+
+//
+
+### Componentes utilizados
+
+Para realizar a montagem do circuito, foram utilizados:
+
+- 1 Raspberry Pi 3;
+- 1 sensor de temperatura DS18B20;
+- 1 protoboard;
+- 1 resistor de 4,7 kΩ;
+- 3 cabos jumper macho-fêmea:
+  - 1 preto;
+  - 1 vermelho;
+  - 1 amarelo.
+
+### Identificação dos fios
+
+Na montagem realizada, os fios do sensor DS18B20 possuem as seguintes funções:
+
+- **Preto:** GND ou aterramento;
+- **Vermelho:** VCC ou alimentação de 3,3 V;
+- **Amarelo:** DATA ou transmissão dos dados de temperatura.
+
+> [!WARNING]
+> As cores dos fios podem variar conforme o fabricante do sensor. Verifique a identificação dos fios antes de conectar a alimentação.
+
+### Resumo das conexões
+
+| Componente | Função | Conexão no Raspberry Pi |
+|---|---|---|
+| Fio preto | GND | Pino físico 6 |
+| Fio vermelho | Alimentação de 3,3 V | Pino físico 1 |
+| Fio amarelo | Sinal de dados | GPIO 4, pino físico 7 |
+| Resistor de 4,7 kΩ | Pull-up | Entre 3,3 V e a linha de dados |
+
+### Montagem na protoboard
+
+Os fios preto, vermelho e amarelo do sensor devem ser inseridos em trilhas elétricas diferentes da protoboard.
+
+Os furos pertencentes à mesma trilha são eletricamente conectados. Por isso, os componentes não precisam ocupar exatamente os mesmos furos mostrados na imagem, mas precisam compartilhar as trilhas corretas.
+
+#### 1. Conexão do aterramento
+
+1. Insira o **fio preto do sensor** em uma trilha da protoboard;
+2. Insira o **jumper preto** em outro furo da mesma trilha;
+3. Conecte a extremidade fêmea do jumper a um pino **GND** do Raspberry Pi.
+
+#### 2. Conexão da alimentação
+
+1. Insira o **fio vermelho do sensor** em outra trilha da protoboard;
+2. Insira o **jumper vermelho** em outro furo da mesma trilha;
+3. Conecte a extremidade fêmea do jumper ao pino de **3,3 V** do Raspberry Pi.
+
+#### 3. Conexão do sinal de dados
+
+1. Insira o **fio amarelo do sensor** em uma terceira trilha da protoboard;
+2. Insira o **jumper amarelo** em outro furo da mesma trilha;
+3. Conecte a extremidade fêmea do jumper ao **GPIO 4**, correspondente ao pino físico 7 do Raspberry Pi.
+
+O GPIO 4 será utilizado pela interface 1-Wire para receber os dados de temperatura enviados pelo sensor.
+
+#### 4. Instalação do resistor
+
+Instale o resistor de **4,7 kΩ** entre as trilhas dos fios vermelho e amarelo:
+
+1. Conecte uma extremidade do resistor à mesma trilha do **fio vermelho**, ligada aos 3,3 V;
+2. Conecte a outra extremidade à mesma trilha do **fio amarelo**, ligada ao GPIO 4.
+
+O resistor funciona como um resistor de **pull-up**, mantendo a linha de dados em um nível lógico estável para a comunicação entre o sensor e o Raspberry Pi.
+
+### Diagrama simplificado
+
+```text
+Raspberry Pi                         Sensor DS18B20
+
+3,3 V, pino físico 1 --------------- VCC, fio vermelho
+          |
+          +---- resistor 4,7 kΩ -----+
+                                     |
+GPIO 4, pino físico 7 -------------- DATA, fio amarelo
+
+GND, pino físico 6 ----------------- GND, fio preto
+```
