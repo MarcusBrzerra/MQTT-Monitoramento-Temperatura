@@ -292,3 +292,84 @@ GPIO 4, pino físico 7 -------------- DATA, fio amarelo
 
 GND, pino físico 6 ----------------- GND, fio preto
 ```
+
+O DS18B20 utiliza o barramento 1-Wire. A biblioteca w1thermsensor documenta o GPIO 4 como pino de dados padrão e o resistor entre a alimentação e a linha DATA.
+
+## Ativação da interface 1-Wire
+
+Depois de revisar a montagem do circuito, ligue o Raspberry Pi Publisher e abra o **Terminal**.
+
+Execute:
+
+```bash
+sudo raspi-config
+```
+
+No menu de configuração, acesse:
+
+```text
+Interface Options > 1-Wire > Yes
+```
+
+Finalize a configuração e reinicie o Raspberry Pi:
+
+```bash
+sudo reboot
+```
+
+A interface 1-Wire permite que o Raspberry Pi reconheça o sensor DS18B20. Nesta montagem, o sinal de dados utiliza o **GPIO 4**, correspondente ao pino físico 7.
+
+## Verificação do sensor
+
+Após a reinicialização, verifique os dispositivos conectados ao barramento 1-Wire:
+
+```bash
+ls /sys/bus/w1/devices/
+```
+
+O sensor DS18B20 deverá aparecer com um identificador iniciado por `28-`.
+
+Exemplo:
+
+```text
+28-00000abcdef1
+```
+
+Cada sensor possui um identificador próprio, utilizado posteriormente para diferenciar as medições.
+
+> [!NOTE]
+> Um diretório iniciado por `00-` pode indicar problema na montagem, conexão incorreta ou ausência do resistor de pull-up.
+
+Para visualizar os dados brutos enviados pelo sensor:
+
+```bash
+cat /sys/bus/w1/devices/28-*/w1_slave
+```
+
+Dependendo da versão do Raspberry Pi OS, também poderá existir o arquivo `temperature`:
+
+```bash
+cat /sys/bus/w1/devices/28-*/temperature
+```
+
+O valor poderá ser apresentado em milésimos de grau Celsius. Por exemplo:
+
+```text
+25125
+```
+
+Esse valor corresponde a:
+
+```text
+25,125 °C
+```
+
+Se nenhum sensor for encontrado, verifique:
+
+- Se a interface 1-Wire está ativada;
+- Se o fio preto está conectado ao GND;
+- Se o fio vermelho está conectado aos 3,3 V;
+- Se o fio amarelo está conectado ao GPIO 4;
+- Se o resistor de 4,7 kΩ está entre os 3,3 V e a linha de dados;
+- Se o sensor está recebendo alimentação.
+
