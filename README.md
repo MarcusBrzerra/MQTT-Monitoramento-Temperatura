@@ -1,10 +1,38 @@
 # Monitoramento de Temperatura com Raspberry Pi e MQTT
+//
+
+(imagens)
+
+//
 
 Projeto de monitoramento de temperatura utilizando Raspberry Pi, sensores DS18B20 e o protocolo MQTT.
 
-A solução foi desenvolvida como uma prova de conceito para monitorar a temperatura próxima aos aparelhos de ar-condicionado da sala-cofre do Data Center do Ministério do Trabalho e Emprego (MTE).
+A solução foi desenvolvida como uma prova de conceito para monitorar a temperatura próxima aos aparelhos de ar-condicionado em um ambiente crítico (por exemplo, uma sala de equipamentos ou data center), onde o controle de temperatura é sensivel.
 
-> Este projeto realiza apenas a coleta e a transmissão das temperaturas. Ele não controla os aparelhos de ar-condicionado.
+> Este projeto realiza apenas a **coleta e a transmissão** das temperaturas. Ele **não controla** os aparelhos de ar-condicionado.
+
+## Sumário
+- [Objetivo](#objetivo)
+- [Arquitetura](#Arquitetura)
+- [Raspberry Pi Publisher](#Raspberry-Pi-Publisher)
+- [Raspberry Pi Broker](#Raspberry-Pi-Broker)
+- [Fluxo de comunicação](#Fluxo-de-comunicação)
+- [Tecnologias utilizadas](#Tecnologias-utilizadas)
+- [Materiais](#Materiais)
+- [Preparação dos cartões MicroSD](#Preparação-dos-cartões-MicroSD)
+- [Inicialização dos Raspberry Pi](#Inicialização-dos-Raspberry-Pi)
+- [Preparação dos Raspberry Pi](#Preparação-dos-Raspberry-Pi)
+- [Configuração do Broker MQTT](#Configuração-do-Broker-MQTT)
+- [Teste do MQTT](#Teste-do-MQTT)
+- [Montagem do sensor DS18B20](#Montagem-do-sensor-DS18B20)
+- [Ativação da interface 1-Wire](#Ativação-da-interface-1-Wire)
+- [Verificação do sensor](#Verificação-do-sensor)
+- [Preparação do ambiente Python](#Preparação-do-ambiente-Python)
+- [Teste em Python com temperatura simulada](#Teste-em-Python-com-temperatura-simulada)
+- [Publicação da temperatura real](#Publicação-da-temperatura-real)
+- [Organização dos tópicos](#Organização-dos-tópicos)
+- [Monitoramento das mensagens no Broker](#Monitoramento-das-mensagens-no-Broker)
+- [Utilização de mais de um sensor](#Utilização-de-mais-de-um-sensor)
 
 ## Objetivo
 
@@ -24,7 +52,7 @@ O projeto utiliza dois Raspberry Pi:
 
 Responsável por:
 
-- Ler os sensores DS18B20;
+- Ler os sensores DS18B20 (neste projeto, os dois sensores DS18B20 estão conectados ao mesmo Raspberry Pi Publisher, compartilhando a mesma linha 1-Wire - );
 - Conectar-se ao Broker MQTT;
 - Publicar as temperaturas em tópicos MQTT.
 
@@ -60,7 +88,7 @@ Zabbix, dashboard ou outro cliente
 - Raspberry Pi OS;
 - Python 3;
 - MQTT;
-- Eclipse Mosquitto;
+- Eclipse Mosquitto;O projeto cobre a coleta e o transporte das leituras de temperatura via MQTT. Recursos como autenticação, criptografia, alertas e persistência
 - Eclipse Paho MQTT;
 - Biblioteca w1thermsensor;
 - Sensor DS18B20;
@@ -99,6 +127,8 @@ Nas configurações adicionais do Raspberry Pi Imager, também é possível defi
 - Fuso horário;
 - Layout do teclado;
 - Acesso remoto por SSH.
+
+>Defina usuário, senha e credenciais de Wi-Fi próprios. Nenhuma credencial real deve constar neste README ou em arquivos versionados do projeto.
 
 Os cartões MicroSD devem ser preparados separadamente para cada Raspberry Pi.
 
@@ -149,6 +179,7 @@ Para testar a comunicação entre os dispositivos:
 ```bash
 ping -c 4 IP_DO_OUTRO_RASPBERRY
 ```
+>Os endereços IP variam conforme a rede local de cada ambiente. Use o IP retornado pelo comando `hostname -I` no seu próprio ambiente — não há um endereço fixo válido para todos os casos.
 
 ## Configuração do Broker MQTT
 
@@ -183,7 +214,13 @@ Reiniciar o Mosquitto:
 ```bash
 sudo systemctl restart mosquitto
 ```
->A conexão anônima deve ser utilizada somente em ambiente de testes. Em uma implantação real, devem ser configurados autenticação, controle de acesso e criptografia.
+>[!WARNING] `allow_anonymous true` é uma configuração exclusiva de laboratório/desenvolvimento. Ela permite que qualquer dispositivo na rede publique e assine tópicos sem autenticação. Em uma implantação real (fora de um ambiente de testes isolado), é obrigatório configurar:
+> - Autenticação por usuário e senha (`password_file`) ou certificados;
+> - Controle de acesso por tópico (`acl_file`);
+> - Criptografia via TLS (porta 8883);
+> - Restrição de rede/firewall para o Broker.
+>
+> Não utilize `allow_anonymous` true em redes compartilhadas, expostas à internet ou em produção.
 
 ## Teste do MQTT
 
@@ -232,8 +269,8 @@ Na montagem realizada, os fios do sensor DS18B20 possuem as seguintes funções:
 - **Vermelho:** VCC ou alimentação de 3,3 V;
 - **Amarelo:** DATA ou transmissão dos dados de temperatura.
 
-> [!WARNING]
-> As cores dos fios podem variar conforme o fabricante do sensor. Verifique a identificação dos fios antes de conectar a alimentação.
+> [!WARNING] As cores dos fios podem variar conforme o fabricante do sensor.
+> Verifique a identificação dos fios antes de conectar a alimentação.
 
 ### Resumo das conexões
 
@@ -373,3 +410,316 @@ Se nenhum sensor for encontrado, verifique:
 - Se o resistor de 4,7 kΩ está entre os 3,3 V e a linha de dados;
 - Se o sensor está recebendo alimentação.
 
+## Preparação do ambiente Python
+
+No Raspberry Pi Publisher, instale o Python, o `pip` e o suporte a ambientes virtuais:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
+```
+
+Crie uma pasta para o projeto:
+
+```bash
+mkdir -p ~/projeto-temperatura
+cd ~/projeto-temperatura
+```
+
+Crie um ambiente virtual:
+
+```bash
+python3 -m venv .venv
+```
+
+Ative o ambiente:
+
+```bash
+source .venv/bin/activate
+```
+
+Instale as bibliotecas utilizadas pelo projeto:
+
+```bash
+python3 -m pip install --upgrade pip
+python3 -m pip install paho-mqtt w1thermsensor
+```
+
+O ambiente virtual mantém as dependências do projeto separadas dos pacotes do sistema operacional.
+
+Sempre que abrir um novo Terminal para executar o projeto, acesse a pasta e ative novamente o ambiente:
+
+```bash
+cd ~/projeto-temperatura
+source .venv/bin/activate
+```
+
+> [!NOTE]
+> Não é necessário utilizar `--break-system-packages`, pois as bibliotecas serão instaladas dentro do ambiente virtual.
+
+## Teste em Python com temperatura simulada
+
+Antes de utilizar a temperatura real do sensor, faça um teste publicando um valor simulado no Broker MQTT.
+
+Crie o arquivo:
+
+```bash
+nano teste_mqtt.py
+```
+
+Adicione o seguinte código:
+
+```python
+import paho.mqtt.client as mqtt
+
+BROKER = "IP_DO_BROKER"
+PORTA = 1883
+TOPICO = "temperatura/teste"
+TEMPERATURA_SIMULADA = 25.8
+
+cliente = mqtt.Client(
+    mqtt.CallbackAPIVersion.VERSION2,
+    client_id="publisher-teste"
+)
+
+try:
+    cliente.connect(BROKER, PORTA, 60)
+    cliente.loop_start()
+
+    resultado = cliente.publish(
+        TOPICO,
+        payload=str(TEMPERATURA_SIMULADA),
+        qos=0,
+        retain=False
+    )
+
+    resultado.wait_for_publish()
+
+    print(
+        f"Temperatura simulada enviada: "
+        f"{TEMPERATURA_SIMULADA} °C"
+    )
+
+finally:
+    cliente.loop_stop()
+    cliente.disconnect()
+```
+
+Substitua:
+
+```python
+BROKER = "IP_DO_BROKER"
+```
+
+Pelo endereço IP do Raspberry Pi que executa o Mosquitto.
+
+Exemplo:
+
+```python
+BROKER = "192.168.1.20"
+```
+
+Salve o arquivo e execute:
+
+```bash
+python3 teste_mqtt.py
+```
+
+No Raspberry Pi Broker, acompanhe a mensagem publicada:
+
+```bash
+mosquitto_sub \
+  -h IP_DO_BROKER \
+  -p 1883 \
+  -t "temperatura/#" \
+  -v
+```
+
+Resultado esperado:
+
+```text
+temperatura/teste 25.8
+```
+
+Se a mensagem for recebida, a aplicação Python conseguiu se conectar e publicar no Broker MQTT.
+
+## Publicação da temperatura real
+
+Depois de validar a comunicação MQTT com a temperatura simulada, crie o programa responsável pela leitura dos sensores DS18B20.
+
+Crie o arquivo:
+
+```bash
+nano publisher_temperatura.py
+```
+
+Adicione o seguinte código:
+
+```python
+import time
+
+import paho.mqtt.client as mqtt
+from w1thermsensor import W1ThermSensor
+
+BROKER = "IP_DO_BROKER"
+PORTA = 1883
+INTERVALO = 2
+
+cliente = mqtt.Client(
+    mqtt.CallbackAPIVersion.VERSION2,
+    client_id="raspberry-publisher"
+)
+
+cliente.connect(BROKER, PORTA, 60)
+cliente.loop_start()
+
+try:
+    while True:
+        sensores = W1ThermSensor.get_available_sensors()
+
+        if not sensores:
+            print("Nenhum sensor DS18B20 encontrado.")
+
+        for sensor in sensores:
+            temperatura = sensor.get_temperature()
+            topico = f"temperatura/{sensor.id}"
+
+            resultado = cliente.publish(
+                topico,
+                payload=str(temperatura),
+                qos=0,
+                retain=False
+            )
+
+            resultado.wait_for_publish()
+
+            print(
+                f"Sensor: {sensor.id} | "
+                f"Temperatura: {temperatura:.2f} °C | "
+                f"Tópico: {topico}"
+            )
+
+        time.sleep(INTERVALO)
+
+except KeyboardInterrupt:
+    print("\nPublicação interrompida pelo usuário.")
+
+finally:
+    cliente.loop_stop()
+    cliente.disconnect()
+    print("Conexão com o Broker encerrada.")
+```
+
+Substitua:
+
+```python
+BROKER = "IP_DO_BROKER"
+```
+
+Pelo endereço IP do Raspberry Pi Broker.
+
+Exemplo:
+
+```python
+BROKER = "192.168.1.20"
+```
+
+Execute o programa:
+
+```bash
+python3 publisher_temperatura.py
+```
+
+O programa seguirá este fluxo:
+
+1. Conectará o Raspberry Pi Publisher ao Broker MQTT;
+2. Procurará os sensores DS18B20 disponíveis;
+3. Percorrerá os sensores encontrados;
+4. Lerá a temperatura de cada sensor;
+5. Criará um tópico usando o identificador do sensor;
+6. Publicará a temperatura no tópico correspondente;
+7. Repetirá o processo a cada dois segundos.
+
+Para interromper o programa, pressione:
+
+```text
+Ctrl+C
+```
+
+## Organização dos tópicos
+
+Cada sensor DS18B20 possui um identificador único. O programa utiliza esse identificador para criar automaticamente um tópico para cada sensor.
+
+Formato utilizado:
+
+```text
+temperatura/{sensor_id}
+```
+
+Exemplos:
+
+```text
+temperatura/00000abcdef1
+temperatura/00000abcdef2
+```
+
+No código, o tópico é criado por esta linha:
+
+```python
+topico = f"temperatura/{sensor.id}"
+```
+
+Dessa forma, não é necessário informar manualmente o ID de cada sensor.
+
+## Monitoramento das mensagens no Broker
+
+No Raspberry Pi Broker, execute:
+
+```bash
+mosquitto_sub \
+  -h IP_DO_BROKER \
+  -p 1883 \
+  -t "temperatura/+" \
+  -v
+```
+
+O caractere `+` representa um nível do tópico. Nesse caso, representa o identificador de qualquer sensor conectado.
+
+Exemplo de mensagem recebida:
+
+```text
+temperatura/00000abcdef1 25.81
+```
+
+Para acompanhar também a temperatura simulada e qualquer outro tópico abaixo de `temperatura/`, utilize:
+
+```bash
+mosquitto_sub \
+  -h IP_DO_BROKER \
+  -p 1883 \
+  -t "temperatura/#" \
+  -v
+```
+
+O caractere `#` permite receber todos os tópicos existentes abaixo de `temperatura/`.
+
+## Utilização de mais de um sensor
+
+O DS18B20 utiliza o barramento 1-Wire e cada sensor possui um identificador individual. Por isso, mais de um sensor pode compartilhar as mesmas conexões:
+
+- O VCC pode compartilhar a linha de 3,3 V;
+- O GND pode compartilhar a linha de aterramento;
+- O DATA pode compartilhar a linha conectada ao GPIO 4;
+- Cada sensor continuará possuindo um identificador diferente;
+- O programa percorrerá automaticamente os sensores detectados;
+- Cada temperatura será publicada em um tópico próprio.
+
+Exemplo com dois sensores:
+
+```text
+temperatura/00000abcdef1 25.81
+temperatura/00000abcdef2 26.34
+```
+
+> [!CAUTION]
+> Desligue o Raspberry Pi da fonte antes de conectar outro sensor ou modificar o circuito.
